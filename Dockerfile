@@ -1,19 +1,38 @@
-FROM richarvey/nginx-php-fpm:3.1.6
+FROM php:8.2-fpm
 
-COPY . .
+# تثبيت الحزم الأساسية
+RUN apt-get update && apt-get install -y \
+    nginx \
+    curl \
+    git \
+    zip \
+    unzip \
+    libpq-dev \
+    && docker-php-ext-install pdo_pgsql
 
-# ✅ أضف هذا السطر
-RUN chmod +x /var/www/html/scripts/00-laravel-deploy.sh
+# تثبيت Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-ENV SKIP_COMPOSER 1
-ENV WEBROOT /var/www/html/public
-ENV PHP_ERRORS_STDERR 1
-ENV RUN_SCRIPTS 1
-ENV REAL_IP_HEADER 1
+# نسخ المشروع
+COPY . /var/www/html
+WORKDIR /var/www/html
 
-ENV APP_ENV production
-ENV APP_DEBUG false
+# تثبيت التبعيات
+RUN composer install --no-dev --optimize-autoloader
 
-ENV COMPOSER_ALLOW_SUPERUSER 1
+# إعداد المفاتيح والكاش
+RUN php artisan key:generate
+RUN php artisan config:cache
+RUN php artisan route:cache
+RUN php artisan view:cache
 
-CMD ["/start.sh"]
+# إعداد NGINX
+COPY conf/nginx-site.conf /etc/nginx/sites-enabled/default
+
+# صلاحيات
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
+EXPOSE 80
+
+CMD ["sh", "-c", "php-fpm & nginx -g 'daemon off;'"]

@@ -1,7 +1,9 @@
-@"
 FROM richarvey/nginx-php-fpm:3.1.6
 
 COPY . .
+
+# ✅ أضف هذا السطر
+RUN chmod +x /var/www/html/scripts/00-laravel-deploy.sh
 
 ENV SKIP_COMPOSER 1
 ENV WEBROOT /var/www/html/public
@@ -15,4 +17,3 @@ ENV APP_DEBUG false
 ENV COMPOSER_ALLOW_SUPERUSER 1
 
 CMD ["/start.sh"]
-"@ | Out-File -FilePath Dockerfile -Encoding UTF8
